@@ -17,3 +17,18 @@
 #http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=5349196
 
 #f[i] denotes an indicator of the node v[i] in the case of adding a new node
+#0 < w < sum k (where k is the number of neighbors of each node), w is randomly generated
+#g[i] = w-k[i]
+#f[i] = 1 if g[i] < 0, 0 if g[i] >= 0
+
+RXGENscale_free = function(n, gamma) {
+  
+}
+
+
+#Emergence of Scaling in Random Networks, Barabasi, Albert
+
+BAGenScale_free = function(n, gamma) {
+  
+  
+}
