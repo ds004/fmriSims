@@ -70,3 +70,9 @@ Adj[lower.tri(Adj)] = elist
 Adj[upper.tri(Adj)] = t(Adj)[upper.tri(Adj)]
 newgraph = graph.adjacency(Adj, mode = "undirected")
 plot(newgraph, vertex.size=3, vertex.label=NA)
+
+
+
+#STEP 2
+#okay, given adjacency matrix, how to simulate from Ising
+#IsingSampler package seems to be good.
