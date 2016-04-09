@@ -32,3 +32,12 @@ BAGenScale_free = function(n, gamma) {
   
   
 }
+
+
+
+#perhaps we can just use igraph
+install.packages("igraph")
+library(igraph)
+
+#the function sample_pa() generates scale-free graphs according to Barabasi-Albert model
+g = sample_pa(1000)
