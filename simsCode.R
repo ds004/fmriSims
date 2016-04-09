@@ -40,7 +40,8 @@ install.packages("igraph")
 library(igraph)
 
 #the function sample_pa() generates scale-free graphs according to Barabasi-Albert model
-g = sample_pa(100)
+#n is number of nodes
+g = sample_pa(n)
 #prints vertices
 V(g)
 #prints edges
@@ -57,4 +58,15 @@ newgraph = graph.adjacency(Adj, mode = "undirected")
 plot(newgraph, vertex.size = 3, vertex.label = NA)
 
 
-
+#okay, that's my scale-free graph. now to do Erdos Renyi 
+#p is probability of an edge
+#n is number of nodes
+#set p so that expected number of edges is = n.
+p = 1/((n-1)/2) 
+#undirected -> n*(n-1)/2 possible edges. 
+elist = rbinom(n*(n-1)/2, 1, p)
+Adj = matrix(0, nrow = n, ncol = n)
+Adj[lower.tri(Adj)] = elist
+Adj[upper.tri(Adj)] = t(Adj)[upper.tri(Adj)]
+newgraph = graph.adjacency(Adj, mode = "undirected")
+plot(newgraph, vertex.size=3, vertex.label=NA)
