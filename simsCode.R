@@ -40,4 +40,21 @@ install.packages("igraph")
 library(igraph)
 
 #the function sample_pa() generates scale-free graphs according to Barabasi-Albert model
-g = sample_pa(1000)
+g = sample_pa(100)
+#prints vertices
+V(g)
+#prints edges
+E(g)
+#prints degree of each vertex
+degree(g)
+#get adjacency matrix
+Adj = get.adjacency(g, sparse = FALSE)
+Adj[upper.tri(Adj)] = t(Adj)[upper.tri(Adj)]
+
+newgraph = graph.adjacency(Adj, mode = "undirected")
+#plot in a way I can look at
+#example plots http://igraph.org/r/doc/plot.common.html
+plot(newgraph, vertex.size = 3, vertex.label = NA)
+
+
+
