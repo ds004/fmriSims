@@ -76,3 +76,16 @@ plot(newgraph, vertex.size=3, vertex.label=NA)
 #STEP 2
 #okay, given adjacency matrix, how to simulate from Ising
 #IsingSampler package seems to be good.
+library(IsingSampler)
+n = 100
+graph = Adj
+thresholds = rep(1, 100)
+t = proc.time()[3]
+Okay = IsingSampler(n, graph, thresholds)
+proc.time()[3] -t
+
+
+
+
+
+
