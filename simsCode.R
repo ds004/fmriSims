@@ -77,15 +77,43 @@ plot(newgraph, vertex.size=3, vertex.label=NA)
 #okay, given adjacency matrix, how to simulate from Ising
 #IsingSampler package seems to be good.
 library(IsingSampler)
-n = 100
+n = 101
 graph = Adj
 thresholds = rep(1, 100)
 t = proc.time()[3]
 Okay = IsingSampler(n, graph, thresholds)
 proc.time()[3] -t
 
+#questions, what is threshold, what is beta?
+#threshold is, yea, individual parameters.  beta is fine
+#need to have thing taking -1 and 1 as states
+thresholds = rep(0, 100)
+sim = IsingSampler(n, graph, thresholds, responses = c(-1L, 1L))
+sim2 = sim == TRUE
 
 
+#STEP 3
+#using IsingFit and see how we do
+library(IsingFit)
+#IsingFit does number of obs * number of var
+Fit = IsingFit(sim)
+Fit2 = IsingFit(sim2)
+#note that we DO have to change responses to 1 and 0
+
+
+#STEP 4
+#compare graphs.
+#ways to compare graphs. 
+#1. # of correct edges
+#2. proportion of correct edges
+#3. compare over changing misclassification.
+
+fitAdj = Fit2$weiadj
+#note we have 101 edges and there are 105 true edges! That's good.
+sum(fitAdj != 0)/2; sum(Adj)/2
+
+#from weighted adjacency, get adjacency
+fitAdj = fitAdj!=0 
 
 
 
