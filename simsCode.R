@@ -62,6 +62,7 @@ plot(newgraph, vertex.size = 3, vertex.label = NA)
 #p is probability of an edge
 #n is number of nodes
 #set p so that expected number of edges is = n.
+n = 100
 p = 1/((n-1)/2) 
 #undirected -> n*(n-1)/2 possible edges. 
 elist = rbinom(n*(n-1)/2, 1, p)
@@ -72,32 +73,54 @@ newgraph = graph.adjacency(Adj, mode = "undirected")
 plot(newgraph, vertex.size=3, vertex.label=NA)
 
 
+#function getting Erdos Renyi graph
+ErdRen = function(n) {
+	p = 1/((n-1)/2) 
+#undirected -> n*(n-1)/2 possible edges. 
+	elist = rbinom(n*(n-1)/2, 1, p)
+	Adj = matrix(0, nrow = n, ncol = n)
+	Adj[lower.tri(Adj)] = elist
+	Adj[upper.tri(Adj)] = t(Adj)[upper.tri(Adj)]
+	Adj
+}
+
+#function getting scalefree graph
+ScaFre = function(n) {
+	g = sample_pa(n)
+	Adj = get.adjacency(g, sparse = FALSE)
+	Adj[upper.tri(Adj)] = t(Adj)[upper.tri(Adj)]
+	Adj
+}
+
 
 #STEP 2
 #okay, given adjacency matrix, how to simulate from Ising
 #IsingSampler package seems to be good.
 library(IsingSampler)
-n = 101
+nsim = 101
 graph = Adj
-thresholds = rep(1, 100)
-t = proc.time()[3]
-Okay = IsingSampler(n, graph, thresholds)
-proc.time()[3] -t
+#thresholds = rep(1, 100)
+#t = proc.time()[3]
+#Okay = IsingSampler(nsim, graph, thresholds)
+#proc.time()[3] -t
 
 #questions, what is threshold, what is beta?
 #threshold is, yea, individual parameters.  beta is fine
 #need to have thing taking -1 and 1 as states
 thresholds = rep(0, 100)
-sim = IsingSampler(n, graph, thresholds, responses = c(-1L, 1L))
-sim2 = sim == TRUE
+t = proc.time()[3]
+sim = IsingSampler(nsim, graph, thresholds, responses = c(-1L, 1L))
+proc.time()[3]-t
+sim = sim == TRUE
+
 
 
 #STEP 3
 #using IsingFit and see how we do
 library(IsingFit)
 #IsingFit does number of obs * number of var
+#Fit = IsingFit(sim)
 Fit = IsingFit(sim)
-Fit2 = IsingFit(sim2)
 #note that we DO have to change responses to 1 and 0
 
 
@@ -108,12 +131,71 @@ Fit2 = IsingFit(sim2)
 #2. proportion of correct edges
 #3. compare over changing misclassification.
 
-fitAdj = Fit2$weiadj
+fitAdj = Fit$weiadj
 #note we have 101 edges and there are 105 true edges! That's good.
 sum(fitAdj != 0)/2; sum(Adj)/2
 
 #from weighted adjacency, get adjacency
 fitAdj = fitAdj!=0 
+
+
+#given True and Fitted adjacency matrix, calculate proportion of equal edges
+propEqal = function(TrueAdj, fitAdj) {
+	sum(TrueAdj == fitAdj)/(dim(TrueAdj)[1]^2)
+} 
+
+#calculate proportion of correct non zero edges
+NonZero = function(TrueAdj, fitAdj) {
+	sum(TrueAdj + fitAdj == 2)/sum(TrueAdj)
+}
+
+#proportion of correct zero edges
+Zero = function(TrueAdj, fitAdj) {
+	sum(TrueAdj + fitAdj == 0)/sum(TrueAdj == 0)
+}
+
+
+#Sims
+#1. choose probability of misclassification for each node to be 1-> 10%
+#2. simulate 50 times at each misclassification level
+#3. do ±2 standard deviation errors bars. draw lines between means and error bars
+#redo for scale free graph
+
+misclass = seq(0, 10, by = 1)
+out1 = out2 = matrix(NA, nrow = 50, ncol = 11)
+thresholds = rep(0, 100)
+nsim = 500
+#loop over each miclassification thing
+for (i in misclass) {
+#simulate 50 times
+t = proc.time()[3]
+	for (k in 1:50) {
+		TrueAdj = ErdRen(100)
+		sim = IsingSampler(nsim, TrueAdj, thresholds, responses = c(-1L, 1L))
+		
+		sim = sim==TRUE
+		sim = misClass(sim, i)
+		Fit = IsingFit(sim, plot = FALSE, progressbar=FALSE)
+		fitAdj = Fit$weiadj
+		fitAdj = fitAdj!=0 
+		out1[k, i+1] = Zero(TrueAdj, fitAdj)
+		out2[k, i+1] = NonZero(TrueAdj, fitAdj)
+	}
+print(proc.time()[3] - t)
+}
+
+
+
+
+#misclassifier function, given simulations, randomly 
+#misclassify observations
+misClass = function(sim, prop) {
+	total = prod(dim(sim))
+	missed = sample(1:total, rbinom(1, total, prop))
+	sim[missed] = !sim[missed]
+	sim
+}
+
 
 
 
