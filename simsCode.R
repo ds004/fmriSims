@@ -223,6 +223,5 @@ misClass = function(sim, prop) {
 	sim
 }
 
-okay
 
 
