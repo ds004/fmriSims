@@ -184,7 +184,34 @@ t = proc.time()[3]
 print(proc.time()[3] - t)
 }
 
+save(out1, file = 'out1')
+save(out2, file = 'out2')
 
+misclass = seq(0, 10, by = 1)
+out3 = out4 = matrix(NA, nrow = 50, ncol = 11)
+thresholds = rep(0, 100)
+nsim = 500
+#loop over each miclassification thing
+for (i in misclass) {
+#simulate 50 times
+t = proc.time()[3]
+	for (k in 1:50) {
+		TrueAdj = ScaFre(100)
+		sim = IsingSampler(nsim, TrueAdj, thresholds, responses = c(-1L, 1L))
+		
+		sim = sim==TRUE
+		sim = misClass(sim, i)
+		Fit = IsingFit(sim, plot = FALSE, progressbar=FALSE)
+		fitAdj = Fit$weiadj
+		fitAdj = fitAdj!=0 
+		out3[k, i+1] = Zero(TrueAdj, fitAdj)
+		out4[k, i+1] = NonZero(TrueAdj, fitAdj)
+	}
+print(proc.time()[3] - t)
+}
+
+save(out3, file = 'out3')
+save(out4, file = 'out4')
 
 
 #misclassifier function, given simulations, randomly 
@@ -196,6 +223,6 @@ misClass = function(sim, prop) {
 	sim
 }
 
-
+okay
 
 
