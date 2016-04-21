@@ -161,7 +161,7 @@ Zero = function(TrueAdj, fitAdj) {
 #3. do ±2 standard deviation errors bars. draw lines between means and error bars
 #redo for scale free graph
 
-misclass = seq(0, 10, by = 1)
+misclass = seq(0, .1, by = .01)
 out1 = out2 = matrix(NA, nrow = 50, ncol = 11)
 thresholds = rep(0, 100)
 nsim = 500
@@ -187,7 +187,7 @@ print(proc.time()[3] - t)
 save(out1, file = 'out1')
 save(out2, file = 'out2')
 
-misclass = seq(0, 10, by = 1)
+misclass = seq(0, .10, by = .01)
 out3 = out4 = matrix(NA, nrow = 50, ncol = 11)
 thresholds = rep(0, 100)
 nsim = 500
