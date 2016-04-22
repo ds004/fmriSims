@@ -1,3 +1,9 @@
+library(igraph)
+library(IsingFit)
+library(IsingSampler)
+
+
+
 #alright, simulations for the fMRI thing
 
 #so important simulations. comparing ravikumar on graphs with no misclassification
