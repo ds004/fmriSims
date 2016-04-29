@@ -17,206 +17,53 @@
 
 %\linespread{2} %-- Uncomment for Double Space
 \begin{document}
-\title{A functional connectivity extension to the fMRI GLM framework}
+\title{EM over areas of a network}
 \author{David Sinclair\\
 dgs242}
 \date{\today}
 \maketitle
 
+\section{Framework}
+Take a graph $G = (V, E)$.  Let $Z^n \in \{0, 1\}^{|V|}$ be the true node values from an Ising distribution, such that $Z^n \stackrel{iid}{\sim} Ising(\theta, G)$.  Let $\hat{Z}^n$ be the observed node values, following a misclassified Ising distribution, i.e. $\hat{Z}^n \stackrel{iid}{\sim} Ising_m(\theta, G, \tilde\gamma)$, which is defined by $P(\hat{Z}^n_i \neq Z^n_i ) = \tilde\gamma_i$ independently for all $i$.  Let $\hat{Z}$ be all misclassified observations.
 
-Title options:  {\emph An interregional whole brain approach to task-specific functional connectivity: A GLM Extension}
+Now, let $M_g = \{i : \tilde\gamma_i > g\}$.  These will be the misclassified nodes whose neighbors we will re-estimate.  Our final goal will be to choose $g$ such that we can produce the best estimate of $E$.  For the purposes of the examples in this document, $g$ will be known, due to $\tilde\gamma$ having only a few large values.  In practice our choice of $g$ will almost certainly be that which allows for a computationally tractable method, since the EM algorithm will become computationally intractable over only a small number of nodes.
 
-Acronym options: GLM-LNX (GLM Latent Network eXtension), IFC (Ising Functional Connectivity)
+\section{Estimating $E$}
+Call Ravikumar's method $R: Z \rightarrow |V| \times |V|$, such that $R(\hat{Z}) = \hat{E}^{(0)}$ gives the estimated edge set. This will be our initial edge set estimate, and we will choose $\hat{E}^{(k)}$ sequentially that is no worse on average than $\hat{E}^{(k-1)}$ for $k \geq 1$.
 
-\section{Introduction}	
+\section{EM Method}
+Given misclassified nodes $M_g$, if we choose to re-estimate the neighbors of these nodes, in the Ravikumar method we use all nodes as neighbor candidates for any given node.  In order to do an EM, we need to reduce the candidate set in order to keep the method computationally tractable.  
 
-%3/18/16
-In functional-MRI (fMRI) analyses, functional connectivity studies statistical dependences spatially across the Blood Oxygenated Level Dependent (BOLD) response.  These methods have allowed for tremendous insight in resting state analysis \cite{van2010exploring}, but within the task-specific fMRI analyses there are markedly fewer methods that allow one to study statistical dependences across the cortex.
+Note that if $(A, B) \in E$ and $(B, C) \in E$ but $(A, C) \not\in E$, then if the nodes were not misclassified then $A|B \perp\!\!\!\!\perp C|B$, but if $B$ is misclassified, then we have
 
-%3/18/16
-In this paper we present a method that looks at functional connectivity via an extension to the traditional General Linear Model (GLM) method \cite{worsley1995analysis, friston2002classical}.  Methods such as Peak Correlations, and Beta-series correlations \cite{sadaghiani2010relation, rissman2004measuring} have looked at obtaining some level of functional connectivity through analysis of GLM results, but do not directly give a whole-brain interregional analysis of functional connectivity.   Other methods such as Psychophysiological Interactions (PPI),  and Functional Canonical correlations do not look specifically at activation across the cortex in the context of the GLM \cite{friston1997psychophysiological, friman2001detection}.  One drawback to methods that do not directly use the GLM model is that the interpretation and implementation of their analysis is not able to immediately draw on the vast literature of results obtained from using the GLM method.  As our method is a direct extension to the GLM method, we are able to extend our results of activated regions of the cortex in order to discuss how these regions are sharing information during said activation.
+\begin{align*}
+P(A=1, C=1|\hat{B}=1) &= P(B = \hat{B})P(A=1, C=1|B=1) + P(B\neq \hat{B})P(A=1, C=1|B = 0) \\
+&= (1-\tilde\gamma_B)P(A=1|B=1)P(C=1|B=1) + \tilde\gamma_BP(A =1|B=0)P(C=1|B=0) \\
+&\neq P(A=1|\hat{B}=1)P(C=1|\hat{B}=1)
+\end{align*}
 
-We choose to analyze the GLM fit on our data for functional connectivity by looking specifically at spikes in the BOLD response.  Spikes are defined more concretely in section 2.3, but can be thought of as an increase in blood flow within a region of interest (ROI) of the cortex.  % Increases in BOLD response are represented as the beta parameters in a GLM fit [ref Fox Raichle 2007, or...],
-In our model we specifically focus on areas of the cortex that are clearly activated, and obtain a network of association for these activations. We use an Ising model to present a general statistically principled approach for looking at whole brain interregional functional connectivity patterns. Using the fact that the Ising model is a graphical model \cite{kindermann1980markov}, we fit a whole brain functional connectivity network and conclude conditional dependencies between our ROIs given the obtained edges. 
+Thus these nodes are no longer independent as long as $\theta_{AB} \neq \theta_{BC}$.  On the other hand, if a node's shortest path to a misclassified node in the true network is greater than or equal to 2, then that node's neighbors will still be chosen independently from the misclassification.  
 
-%http://www.nature.com/nrn/journal/v8/n9/full/nrn2201.html for spiking
+Taking this into account, we can say that nodes within distance 2 from a misclassified node could potentially have been neighbors with the misclassified node, but nodes further than distance 2 from a misclassified node are more likely to be not affected by this misclassification.
 
-%3/18/16
-%Within the resting state literature, functional connectivity has allowed for tremendous insight into the instrinsic functional architecture of the brain [refs?].  In the time series the assumption of stationarity has sprung many methods allowing for dependencies across time series to be calculated [refs], but in task fMRI, changes in the BOLD response corresponding to events is directly contrary to the assumption of stationarity. 
-
-%early
-%The commonly used GLM method in task fMRI analyses has been a well studied approach for determining specialized areas of the cortex with a contrasting Blood Oxygenated Level Dependent (BOLD) response [ref to GLM].  A major assumption in this method is the independence of voxels that is only somewhat alleviated by only choosing areas of the cortex as activated if multiple contiguous voxels are also activated [linqvist ref].  Assuming independence is directly contrary to the notion that functional segregation (i.e. the determining of specialized areas of the cortex) is only meaningful in the context of functional integration (i.e. functional and effective connectivity) [Friston2011 ref].
-
-%early
-%The inclusion of functional integration into models for fMRI data has been much less studied in the task fMRI setting as compared to the resting state fMRI setting.  (Here I'm going to go over a few methods for looking at functional integration in fMRI).  Of these methods we note they are commonly computationally intensive, and are well removed from our relatively strong groundwork of functional segregation from the GLM setting.
-
-We fit spikes of the BOLD response for \emph{each} task as shown in Figure 1 (figure showing BOLD -$>$ hemodynamics response -$>$ activation), and use an $\ell_1$ regularization \cite{ravikumar2010high} to determine dependences.  Similar to how partial correlations are looked at in resting state data \cite{ryali2012estimation}, we determine which areas of the cortex exhibit common or disjoint activity in a graphical model framework from our activation fits across task. Looking at the dependence between fitted activations for each event allows one to isolate the event-related variation in activation, which is used to determine how the brain modulates activity across the cortex during similar events.  Considering event-related variation directly has an advantage over the method *name* [ref -- somewhere] that looks at the residual of the GLM fit, as *name* does not isolate the activation effect, and therefore does not take into account any hemodynamic response function dependence in the change in blood flow.
-
-As discussed in \cite{smith2012future} correlation may not be the best way to determine functional connectivity, as if region A and B are correlated and region B and C are correlated then region A and C may be correlated even though they do not directly share information.  Therefore looking at conditional dependencies corresponding to a graphical model may be of more interest.  When looking at partial correlations in resting state literature, the obtained functional connectivity network corresponds to  conditional dependencies in a graphical model \cite{lauritzen1996graphical},  and has been used to produce insight into dependencies across the brain [ref..].  In this paper we use a statistically principled approach to determine the edges corresponding to conditional dependences that is analogous to the regularization method used in \cite{ryali2012estimation} [others] for resting state functional connectivity analysis.  %Note: these analyses can be applied to activations instead of spikes, which corresponds somewhat to a graphical model fit of beta-series correlation.  Code for this is in the online material. % Under the multivariate Gaussian assumption zero elements in the precision matrix correspond to areas of the cortex being conditionally independent, and therefore they do not directly share information.
+Question: does lack of independence imply higher chance of nodes being selected as neighbors?  Note that if $\theta_{AB}, \theta_{BC} > 0$, then 
 
 
+\subsection{E Step}
 
-Whole-brain dependencies are determined via a series of logistic regressions.  To do this we start with an initial ROI, call this ROI$_{response}$, and we do a logistic regression with the activation state of this ROI$_{response}$ where the explanatory variables are the activation state of all other ROIs.   If an ROI is not predicting our given ROI$_{response}$, then its partial slope will be 0 in the regression equation, and in accordance there will be no edge in the graphical model \cite{ravikumar2010high}.  Therefore, our goal becomes to find 0's in the the logistic regression equation.
-
-A well-studied statistical method to find 0's in regression equations is the $\ell_1$ or LASSO regularization first studied for the linear model[ref].  The LASSO shrinks regression coefficients towards 0, and makes certain regression coefficients exactly 0.  In \cite{ravikumar2010high} it is shown that the 0s obtained by the lasso regularization on a logistic regression will correctly determine the neighbors of our given ROI$_{response}$.  In order to find the entire network between all of our ROIs, we redo this analysis for each separate ROI as the response in our $\ell_1$ regularized logistic regression.  \cite{ravikumar2010high} go on to show that redoing this logistic regression will accurately determine the entire network of association in the brain, even when the total number of ROIs in the brain is large.
-
-%in this paragraph I want to discuss that whole $\ell_1$-regularization thing in a little more detail. 
-
-%Assuming brain activations follow an Ising graphical model distribution, edges can be determined via an $\ell_1$-regularization on a logistic regression where we look at each region of interest (ROI) of the cortex conditional on all other ROIs. %add (Need to explain why the effect of ROIs are important... or something)
-%The $\ell_1$-regularization is used in order to generate a sparse connectivity matrix, in order to produce an interpretable network for functional connectivity.  The regularization procedure, also referred to as LASSO [tibshirani reference], works by penalizing the effect on all other ROIs.  This penalization forces the effect of other ROIs exactly towards 0, providing a threshold for one to determine if areas of the brain are dependent that is known to perform better theoretically, and in practice [theoretical ref... smith ref for practice? also ryali 2012?] than simply choosing small effect sizes as having no effect (grr). 
-%end add
-% This has been studied in the Ising case \cite{ravikumar2010high} and can be used to fit this functional connectivity method in a reasonable computational time, and has been showed to correctly determine dependencies. 
-%add
-
-%end add
-%In the statistical literature, the $\ell_1$-regularization on statistical dependencies has been shown to determine true dependencies in the Ising, Multinomial and Gaussian cases \cite{ravikumar2010high, meinshausen2006high, jalali2011learning}.  Although we present the Ising model here, doing an Ising, Multinomial, or Gaussian graphical model extension to the GLM  are all possible with code available online.%In this paper we focus on the Gaussian case where we will assume the activation fits are multivariate normal (which is asymptotically true [ref]) and apply method [refMB] in order to determine our functional connectivity network.
-
-%The method of using the $\ell_1$-regularization conditional on all other possible variables has been well studied and is known to correctly determine which variables are connected with each other (in our case the variables are ROIs) when assuming the variables have a Gaussian, Ising or Multinomial graphical model determining their dependence [refs].  At the end of the paper we also provide a short discussion on the Ising and Multinomial fit as well as provide code for these possible modeling assumptions.
-
-%A major advantage of this method aside from being a direct extension to the GLM method, is that it is computationally tractable.  Other methods within the task fMRI literature that directly look at dependence of activations tend to be computationally intensive. (For example bayesian methods [refs], I need to expand this).  Our method provides a look at functional connectivity in a task fMRI setting where the analysis will take no more time to run than a traditional GLM and is tractable up to 1000s of ROI. 
-
-The analysis we present here uses Human Connectome Project data from the Working Memory Task \cite{van2013wu, robinson2013multimodal}.  We specifically look at how the functional connectivity network changes when going from 2-back to 0-back working memory trials, and analyze our fitted network by looking at results similar to those looked at in the resting state functional connectivity literature. 
-
-
-\section{Materials and methods}
-
-\subsection{Data and Task}
-Our data is obtained from the Human Connectome Project (HCP).  We are specifically looking at the task fMRI working memory data.  In our analysis we used 25 male and 25 female participants randomly selected from the 100 participant HCP data. The preprocessing that was completed was the standard HCP preprocessing.
- 
-
-Participants were presented with blocks of trials that consisted of pictures
-of places, tools, faces and body parts (non-mutilated parts of bodies with no “nudity”). Within
-each run, the 4 different stimulus types were presented in separate blocks. Also, within each
-run, $\frac{1}{2}$ of the blocks use a 2-back working memory task and ½ use a 0-back working memory
-task (as a working memory comparison). A 2.5 second cue indicates the task type (and target
-for 0-back) at the start of the block. Each of the two runs contains 8 task blocks (10 trials of 2.5
-seconds each, for 25 seconds) and 4 fixation blocks (15 seconds). On each trial, the stimulus is
-presented for 2 seconds, followed by a 500 ms inter-task interval (ITI).  More detail on tasks (Barch et al. 2013).  
-
-One run was acquired with right-to-left phase
-encoding, and a second run with left-to-right phase encoding (in-plane FOV [field of view]
-rotation obtained by inverting both the RO (readout) and PE [phase encoding] gradient polarity).
-tfMRI data were acquired with the same EPI pulse sequence parameters as R-fMRI, except for
-the run duration information listed below
-
-Sequence Gradient-echo EPI
-TR 720 ms
-TE 33.1 ms
-flip angle 52 deg
-FOV 208x180 mm (RO x PE)
-Matrix 104x90 (RO x PE)
-Slice thickness 2.0 mm; 72 slices; 2.0 mm isotropic voxels
-Multiband factor 8
-Echo spacing 0.58 ms
-BW 2290 Hz/Px
-
-The data was parcellated using the \cite{gordon2016generation} parcellation.  {\bf More discussion here on why we chose this parcellation}
-
-\subsection{Experiment Configuration}
-%Note that we can describe the spacing between trials just like what was done in beta-series correlation.
-In order to use the method we need to have multiple trials of similar tasks, similar to the experimental design discussed in \cite{rissman2004measuring}.  For example, for the experiment we look at in this paper we have multiple trials of the 2-back working memory task in order to fit a network (we treat multiple trials of the 0-back working memory task separately).  For $N$ voxels, $M$ subjects, $K$ multiple trials of the similar task and $T$ scans, using the notation in \cite{lindquist2008statistical} and ignoring the 
-nuisance covariates, a single voxel for a single subject can be expressed as 
-\begin{equation}y_{ij}(t) = \sum_{k=1}^Kx_{jk}(t)\beta_{ijk} + \epsilon_{ij}(t)\end{equation}
-for $i = 1, \dots, N$, $j = 1, \dots, M$, and $t = 1, \dots, T$.  Here $x_{jk}(t)$ is the stimulus function for the $k^{th}$ event for the $j^{th}$ subject convolved with the canonical hemodynamic response function.  In the supplementary material/appendix we include how to extend equation (1) if we are looking at more than one type of task.  
-
-%In order to reduce collinearity in the $\beta_{ijk}$ parameters, as their dependence is of principle interest in this technique, we also need for the stimuli to be separated enough in time for the $x_{jk}$ variables to not be collinear
-
-\subsection{Method - Graphical Model Fit}
-Assume we have a parcellation of the cortex that determines our ROIs (in our analysis we will use the \cite{gordon2016generation} parcellation).  If we have $R$ regions of interest, let $V_r$ be the indices for the voxels in region $r$, for $r = 1, \dots, R$.
-
-We extend the GLM method by adding a latent variable term that corresponds to an indicator of activation within that region \emph{for a specific event}.  This gives the extended version of model (1) as
-\begin{equation}y_{ij}(t) = \sum_{k = 1}^K x_{jk}(t)\beta_{ijk}Z_{rjk} + \epsilon_{ij}(t)\end{equation}
-
-Where $Z_{rjk}$ is 1 if the region $r$ was activated for the $k^{th}$ event for the $j^{th}$ volunteer and 0 otherwise.  Since we do not directly observe $Z_{rjk}$, we refer to it as a \emph{latent variable}. 
-
-The further assumption we will make to allow us to fit our network, is that these $Z_{rjk}$ follow an Ising distribution.  In order to use the method \cite{ravikumar2010high}, we need to get estimates for $Z_{rjk}$.  There are multiple ways to complete this step (a strong candidate is the EM algorithm as it is very commonly used for obtaining latent variables \cite{dempster1977maximum}), but since the $\beta_{ijk}$ term in equation (2) corresponds to the activation level, we can also use that to estimate $Z_{rjk}$.  
-
-
-%This corresponds to a network structure, and obtaining edges to this network structure give us a \emph{partial dependence graph} of the brain.  The partial dependence graphs are common in the partial correlation network literature [refs]%, but here we won't need to assume multivariate normality (why is this important?).
-
-
-We determine the $Z_{rjk}$ by randomly choosing a fixed number of voxels in each region so that each region will have roughly the same amount of power.  This is followed by a t-test to determine if voxels were activated significantly away from 0 to obtain $p_{rjk}$; the p-value for region $r$ during event $k$ for volunteer $j$.  Then we estimate $Z_{rjk}$ as follows
-
-\begin{equation}\hat{Z}_{rjk} = \begin{cases} 1 &\text{if }p_{rjk} < 0.05/R \\ 0 &\text{otherwise} \end{cases}\end{equation}
-meaning that $\hat{Z}_{rjk}$ is our \emph{estimated network}.  The threshold here corresponds to a bonferonni correction, so only at most 5\% of the time will a region be classified incorrectly. 
-%
-%Because this misclassification error is so small, by result [myresult] we can still be confident that our estimates of our network edges will be consistent.
-%
-%
-%
-Once we have $\hat{Z}_{rjk}$, since we have assumed an Ising model, we have that 
-
-\begin{equation}P(Z_{rjk} = 1 | Z_{\bar{r}jk}) = logit^{-1}(\theta_0 + \sum_{r' != r}\theta_{r'r}(Z_{r'jk}-0.5))\end{equation}
-Here $\bar{r}$ is all regions not equal to $r$ and $\theta_0, \theta_{r'r}$ are parameters to be fitted.  Equation (4) corresponds to a logistic regression, that is predicting the activation of region $r$ given all other regions $\bar{r}$. Finding which $\theta_{r'r} \neq 0$ will tell us which regions of the brain are connected with eachother \cite{kindermann1980markov}.  \cite{ravikumar2010high} present an algorithm and show that edges are correctly determined.  In this method, a $\ell_1$ regularization penalty is added to the logistic regression given in equation (4) determine which regions, $r$ have $\theta_{r'r} \neq 0$, and therefore we can define the neighbors of $r'$ as follows \begin{equation}N(r') = \{r : \theta_{r'r} \neq 0\}\end{equation}
-After re-doing the logistic regression from (4) with an $\ell_1$ regularization, we obtain our edge set for the entire brain as follows \begin{equation} E = \{(r', r'') : r' \in N(r'') \text{ and } r'' \in N(r')\} \end{equation}
-
-
-%This is the normal/gaussian version
-%Assume we have a parcellation of the cortex that determines our ROIs (in our analysis we will use the [ref Gordon] parcellation).  If we have $R$ regions of interest, let $V_r$ be the indices for the voxels in region $r$, for $r = 1, \dots, R$.  Then with $\hat\beta_{ijk}$ as our estimates of the parameters $\beta_{ijk}$ from (1), each ROIs signal is defined as \begin{equation}\hat\beta^{(r)}_{jk} = \sum_{i \in V_r}\frac{\hat\beta_{ijk}}{|V_r|}\end{equation} for $r = 1, \dots, R$ where $|V_r|$ is the number of voxels in the $r^{th}$ region of interest. 
-
-%Since $\hat\beta_{ijk}$ are fits from a linear regression, we have by [ref] that they are approximately  multivariate normal, which implies that $\hat\beta^{(r)}_{jk}$ will also be multivariate normal [ref].  From here we can make our final modelling assumption, that $(\hat\beta^{(1)}_{jk}, \dots, \hat\beta^{(R)}_{jk})$ is multivariate normal.  
-%note that taking the average that we're talking about here doesn't get rid of a 0s in the precision matrix. 
-
-%From here we may run [refMB] in order to determine the conditional independences built into the distribution of $(\hat\beta^{(1)}_{jk}, \dots, \hat\beta^{(R)}_{jk})$.
-
-%\subsection{Running the Code}
-%We can run this analysis in MatLab using the glmFC.mat from output from SPM or output from FSL. (I will describe this in more detail.)
+\subsection{M Step}
 
 
 
-\section{Results}
-
-\section{Discussion}
 
 
-\bibliographystyle{plain}
-\bibliography{mybib}
 
-%
-%\section{Methods}
-%Looking at the parcellation obtained in [Gordon et al] (why this parcellation?), our goal is to select a Graphical Model [Lauritzen reference?], such that the edges correspond to the dependencies between regions in this parcellation.  
-%
-%Given a parcellation of the brain, our next steps are as follows:
-%
-%\begin{itemize}
-%\item[1.] Quantify the activation level of each region during each event 
-%
-%\item[2.] Determine "best guess" of whether each region was active during each event. 
-%
-%\item[3.] Using [RavWaiLaf ref] method, obtain network edge estimate.
-%
-%\item[4.] Cross validate network size over subjects.
-%\end{itemize}
-%
-%
-%\section{Data}
-%Our data is obtained from the Human Connectome Project (HCP).  We are specifically looking at the task fMRI working memory data.
-%
-%Participants were presented with blocks of trials that consisted of pictures
-%of places, tools, faces and body parts (non-mutilated parts of bodies with no “nudity”). Within
-%each run, the 4 different stimulus types were presented in separate blocks. Also, within each
-%run, ½ of the blocks use a 2-back working memory task and ½ use a 0-back working memory
-%task (as a working memory comparison). A 2.5 second cue indicates the task type (and target
-%for 0-back) at the start of the block. Each of the two runs contains 8 task blocks (10 trials of 2.5
-%seconds each, for 25 seconds) and 4 fixation blocks (15 seconds). On each trial, the stimulus is
-%presented for 2 seconds, followed by a 500 ms inter-task interval (ITI).  More detail on tasks (Barch et al. 2013).  
-%
-%One run was acquired with right-to-left phase
-%encoding, and a second run with left-to-right phase encoding (in-plane FOV [field of view]
-%rotation obtained by inverting both the RO (readout) and PE [phase encoding] gradient polarity).
-%tfMRI data were acquired with the same EPI pulse sequence parameters as R-fMRI, except for
-%the run duration information listed below
-%
-%Sequence Gradient-echo EPI
-%TR 720 ms
-%TE 33.1 ms
-%flip angle 52 deg
-%FOV 208x180 mm (RO x PE)
-%Matrix 104x90 (RO x PE)
-%Slice thickness 2.0 mm; 72 slices; 2.0 mm isotropic voxels
-%Multiband factor 8
-%Echo spacing 0.58 ms
-%BW 2290 Hz/Px
-%
+
+
+
+
+
+
+
 
 \end{document}
