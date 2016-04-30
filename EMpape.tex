@@ -1,0 +1,114 @@
+\documentclass[12pt]{article}
+\usepackage{url,graphicx,tabularx,array}
+\usepackage{amsmath,amsfonts,amsthm} % Math packages
+\usepackage{subfigure} %allows to figures on the same line
+\usepackage{bbm} % for indicator functions, lol
+\usepackage[margin=1in]{geometry} %change the margins, lol
+\usepackage{cite} %CITING STUFF!!!
+\setlength{\parskip}{1ex} %--skip lines between paragraphs
+%\setlength{\parindent}{0pt} %--don't indent paragraphs
+	\addtolength{\oddsidemargin}{-.25in} %move the margins slightly to the left
+\linespread{1.5}
+\usepackage{titling}
+
+\setlength{\droptitle}{-5em} 
+%-- Commands for header
+
+
+%\linespread{2} %-- Uncomment for Double Space
+\begin{document}
+\title{EM over areas of a network}
+\author{David Sinclair\\
+dgs242}
+\date{\today}
+\maketitle
+
+\section{Framework}
+Take a graph $G = (V, E)$.  Let $Z^n \in \{0, 1\}^{|V|}$ be the true node values from an Ising distribution, such that $Z^n \stackrel{iid}{\sim} Ising(\theta, G)$.  Let $\hat{Z}^n$ be the observed node values, following a misclassified Ising distribution, i.e. $\hat{Z}^n \stackrel{iid}{\sim} Ising_m(\theta, G, \tilde\gamma)$, which is defined by $P(\hat{Z}^n_i \neq Z^n_i ) = \tilde\gamma_i$ independently for all $i$.  Let $\hat{Z}$ be all misclassified observations.
+
+Now, let $M_g = \{i : \tilde\gamma_i > g\}$.  These will be the misclassified nodes whose neighbors we will re-estimate.  Our final goal will be to choose $g$ such that we can produce the best estimate of $E$.  For the purposes of the examples in this document, $g$ will be known, due to $\tilde\gamma$ having only a few large values.  In practice our choice of $g$ will almost certainly be that which allows for a computationally tractable method, since the EM algorithm will become computationally intractable over only a small number of nodes.  Without loss of generality, for the purposes of this document we set $M = M_g$.
+
+\section{Estimating $E$}
+Call Ravikumar's method $R: Z \rightarrow |V| \times |V|$, such that $R(\hat{Z}) = \hat{E}^{(0)}$ gives the estimated edge set. This will be our initial edge set estimate, and we will choose $\hat{E}^{(k)}$ sequentially that is no worse on average than $\hat{E}^{(k-1)}$ for $k \geq 1$.
+
+\section{EM Method}
+Given misclassified nodes $M$, if we choose to re-estimate the neighbors of these nodes, in the Ravikumar method we use all remaining nodes as neighbor candidates.  In order to do an EM, we need to reduce the candidate set in order to keep the method computationally tractable.  
+
+Note that if $(A, B) \in E$ and $(B, C) \in E$ but $(A, C) \not\in E$, then if the nodes were not misclassified then $A|B \perp\!\!\!\!\perp C|B$, but if $B$ is misclassified, then we have
+\begin{align*}
+P(A=1, C=1|\hat{B}=1) &= P(B = \hat{B})P(A=1, C=1|B=1) + P(B\neq \hat{B})P(A=1, C=1|B = 0) \\
+&= (1-\tilde\gamma_B)P(A=1|B=1)P(C=1|B=1) + \tilde\gamma_BP(A =1|B=0)P(C=1|B=0) \\
+&\neq P(A=1|\hat{B}=1)P(C=1|\hat{B}=1)
+\end{align*}
+
+Thus these nodes are no longer independent as long as $\theta_{AB} \neq \theta_{BC}$, and in the fitted network the edge $(A, C)$ may appear.  On the other hand, if a node's shortest path to a misclassified node in the true network is greater than or equal to 2, then that node's neighbors will still be chosen independently from the misclassification.  
+
+Taking this into account, we can say that nodes within distance 2 from a misclassified node could potentially have been neighbors with the misclassified node, but nodes further than distance 2 from a misclassified node are more likely to be not affected by this misclassification.
+
+Question: does lack of independence imply higher chance of nodes being selected as neighbors?  Note that if $\theta_{AB}, \theta_{BC} > 0$, then if $C = 1$, it is more likely that $A = 1$ unconditional on $B$, implying the coefficient for $C$ will be chosen as non-zero in the logistic regression $A\sim\hat{B}+C$.  Similarly, the coefficient for $\hat{B}$ will go down, decreasing the chance it will be given an edge. 
+
+Thus we will run the EM algorithm on all $N(N(M))$, all neighbors of neighbors of $M$ in $E^{(0)}$.  Call this $M^N$.  Lastly,l let disjoint subsets $M_i^N \subseteq M^N$, $i = 1, \dots, s$ be the nodes from disjoint subnetworks of $E^{(0)}$ when considering nodes in $M^N$.
+
+\subsection{E Step}
+For our E-step, we will fix the tuning parameter as the average tuning parameter for the initial Ravikumar fit.  In theory this can be estimated for each subnetwork (or each node), but for ease of simulations we will keep it fixed.
+
+We will look at the E step for the first subnetwork, which we will simply rerun for all other subnetworks.  Consider nodes $M_1^N$ with associated subnetwork $E^{(0)}_1$.  Let $\hat{Z}_c$ be the correctly classified nodes, and $\hat{Z}_m$ be the misclassified nodes in this subnetwork.  Take $v \in M_1^N$. Then we define $Q_v(\theta | \theta^{(k)})$ as follows
+\begin{align*}
+Q_v(\theta | \theta^{(k)}) &= E_{\hat{Z}_m|\hat{Z}_c, \theta^{(k)}} \left(\ell(\theta)-\lambda \|\theta\|_1\right) \\
+\end{align*}
+Where $\ell(\theta)$ is the log likelihood.  Therefore we're interested in calculating $E_{\hat{Z}_m|\hat{Z}_c, \theta^{(k)}}(\ell(\theta))$
+
+Note that $\ell(\theta) = \frac{1}{n}\sum_{i=1}^n \log P_{\theta}(z_v^i|z_{\setminus v}^i)$, where $P_\theta$ is our outputted logistic regression fit.
+
+Let $m^*$ be the number of misclassified nodes in $M_1^N$, and let $w^* = |V| - |M_1^N|$ be the number of nodes not in $M_1^N$.  Let $\mathcal{M} = \{0,1\}^{m^* }$, and let $\mathcal{Z} = \{0, 1\}^{w^*}$, and let $z_m \in \{0, 1\}^{|\hat{Z}_m|}$ be any possible arrangement of the misclassified nodes.Then conditional on $\theta$, we have 
+\begin{align*}
+P(Z_m = z_m | Z_c = \hat{Z}_c) &=  \frac{P(Z_m=z_m, Z_c = z_c)}{P(Z_c = z_c)} \\
+&= \frac{\frac{1}{Q}\sum_{z \in \mathcal{Z}} \exp(A(z_c, z_m) + C(z_c, z))}{\frac{1}{Q}\sum_{z \in \mathcal{M} \cup \mathcal{Z}} \exp(A(z_c, z)  + C(z_c, z))} \\
+&= \frac{\exp(A(z_c,z_m)) \cdot \sum_{z \in \mathcal{Z}}\exp(C(z_c,z))}{\sum_{z' \in \mathcal{M}}\exp(A(z_c, z'))\cdot\sum_{z'' \in \mathcal{Z}}\exp(C(z_c,z''))} \\
+&= \frac{\exp(A(z_c, z_m)) }{\sum_{z' \in \mathcal{M}}\exp(A(z_c, z'))}
+\end{align*}
+Where $Q$ is the partition function, and $A$ is association between misclassified and classified nodes in $M_1^N$, and $C$ is the association between classified nodes in $M_1^N$ and all other nodes.  Note that there will be no association between nodes not in $M_1^N$ and misclassified nodes due to the choice of $M_1^N$.
+
+Then we can calculate the expectation as
+\begin{align}
+E(\ell(\theta)) &= \frac{1}{n} \sum_{i=1}^n E(\log P_\theta(x^i_v|x^i_{\setminus v})) \\
+&= \frac{1}{n} \sum_{i=1}^n \sum_{z_m \in \mathcal{M}}\left[P(Z_m = z_m | Z_c = \hat{Z}_c)\cdot P(z^i_v|z_m \cup z_c \setminus v)\right]
+\end{align}
+This takes $|M^N|\cdot n\cdot2^{|\mathcal{M}|+1}$ steps, to calculate $E(\ell(\theta)$.  For $n = 300$, $|\mathcal{M}| = 10$ may still be tractable, and to have 10 misclassified nodes would be a fairly large subnetwork, since the subnetwork would include all 2-neighbors of each of misclassified node.
+
+\subsection{M Step}
+Currently looking at \verb https://core.ac.uk/download/files/153/6287975.pdf goal is to do coordinate descent (at least one step) over this weighted sum. 
+
+In equation (1) and (2), we calculate the weights ahead of time, so we will not need to worry about their derivative in our quadratic approximation of our Q function.  Let $Q_{quad}(\theta_0|\theta^{(t)}) = Q(\theta|\theta^{(t)}) + Q'(\theta|\theta^{(t)})(\theta_0-\theta) + \frac{Q''(\theta|\theta^{(t)})}{2}(\theta_0-\theta)^2$, where the first and second derivative will be the weighted sum of the first and second derivatives of the logistic likelihoods at each possible arrangment $z_m$.  
+
+For a logistic regression $Y \sim X$, from \verb http://statweb.stanford.edu/~jhf/ftp/glmnet.pdf we can calculate the quadratic approximation of the log likeliehood away from our current estimate of $\theta^{(t)}$ as 
+\begin{equation*}
+\ell^Q_{Y\sim X}(\theta) = \frac{1}{2N} \sum_{i=1}^Nw_i(z_i - x_i^T\theta) + C(\theta^{(t)})^2
+\end{equation*}
+where \begin{align*}
+z_i &= x_i^T\theta^{(t)} + \frac{y_i - \tilde{p}(x_i)}{\tilde{p}(x_i)(1-\tilde{p}(x_i))} \\
+w_i &= \tilde{p}(x_i)(1-\tilde{p}(x_i)) 
+\end{align*}
+Where $\tilde{p}(x_i)$ is the estimated probability of $Y_i = 1$, and the last term is constant
+
+$Q_{quad}$ is then the weighted sum of these logistic regressions.  Now that $Q_{quad}$ is calculable, we can find a new estimate by solving the penalized weighted least-squares problem
+\begin{equation}
+\min_{\theta}\{-Q_{quad}(\theta|\theta^{(t)}) + \lambda \|\theta\|_1\}
+\end{equation}
+In order to fit this we can use the glmnet function in R and run a weighted LASSO.
+
+\section{Simulation}
+In this simulation we generate a scale-free network with 50 nodes.  3 nodes are selected to be misclassified 10 times out of 100 observations each, and we choose them such that $|M^N| = 13$ in the true network. 
+
+We do the initial fit to get $E^{(0)}$.  Then, given the fitted $M^N$, we look at $E_M = \{(s, t) : s \in M^N \text{ or } t \in M^N\}$.  If an edge is between a node in $M^N$ and a node not in $M^N$ then we need to be sure to include that node in the fitted logistic regression.
+
+
+
+
+
+
+
+
+
+
+\end{document}
