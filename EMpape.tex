@@ -64,9 +64,9 @@ Let $m^*$ be the number of misclassified nodes in $M_1^N$, and let $w^* = |V| - 
 \begin{align}
 P(Z_m = z_m | Z_c = \hat{Z}_c) &=  \frac{P(Z_m=z_m, Z_c = z_c)}{P(Z_c = z_c)} \\
 &= \frac{\frac{1}{Q}\sum_{z \in \mathcal{Z}} \exp(A(z_c, z_m) + C(z_c, z))}{\frac{1}{Q}\sum_{z \in \mathcal{M} \cup \mathcal{Z}} \exp(A(z_c, z)  + C(z_c, z))} \\
-&= \frac{\exp(A(z_c,z_m)) \cdot \sum_{z \in \mathcal{Z}}\exp(C(z_c,z))}{\sum_{z' \in \mathcal{M}}\exp(A(z_c, z'))\cdot\sum_{z'' \in \mathcal{Z}}\exp(C(z_c,z''))} \\
+ b&= \frac{\exp(A(z_c,z_m)) \cdot \sum_{z \in \mathcal{Z}}\exp(C(z_c,z))}{\sum_{z' \in \mathcal{M}}\exp(A(z_c, z'))\cdot\sum_{z'' \in \mathcal{Z}}\exp(C(z_c,z''))} \\
 &= \frac{\exp(A(z_c, z_m)) }{\sum_{z' \in \mathcal{M}}\exp(A(z_c, z'))} \\
-&=w(z_m)
+&=w(z_m, z_c)
 \end{align}
 Where $Q$ is the partition function, and $A$ is association between misclassified and classified nodes in $M_1^N$, and $C$ is the association between classified nodes in $M_1^N$ and all other nodes.  Note that there will be no association between nodes not in $M_1^N$ and misclassified nodes due to the choice of $M_1^N$.
 
@@ -96,13 +96,17 @@ $Q_{quad}$ is then the weighted sum of these logistic regressions.  Now that $Q_
 \begin{equation}
 \min_{\theta}\{-Q_{quad}(\theta|\theta^{(t)}) + \lambda \|\theta\|_1\}
 \end{equation}
-In order to fit this we can use the glmnet function in R and run a weighted LASSO, where the weights for arrangement $z_m$ at observation $i$ is $w(z_m)\cdot w_i$.
+In order to fit this we can use the glmnet function in R and run a weighted LASSO, where the weights for arrangement $z_m$ at observation $i$ is $w(z_m, z_c)\cdot w_i$.  In particular, in our case, equation (10) becomes 
+\begin{equation}
+\ell^{Q}(\theta) = \frac{1}{n2^{|\mathcal{M}|+1}}\sum_{z_m \in \{0, 1\}^{|\mathcal{M}|}}\sum_{i=1}^nw(z_m, (\hat{Z}_c)_i)w_i(z_i-x_i^T\theta) + C(\theta^{(t)})^2
+\end{equation}
 
 \section{Simulation}
 In this simulation we generate a scale-free network with 50 nodes.  3 nodes are selected to be misclassified 10 times out of 100 observations each, and we choose them such that $|M^N| = 13$ in the true network. 
 
 We do the initial fit to get $E^{(0)}$.  Then, given the fitted $M^N$, we look at $E_M = \{(s, t) : s \in M^N \text{ or } t \in M^N\}$.  If an edge is between a node in $M^N$ and a node not in $M^N$ then we need to be sure to include that node in the fitted logistic regression.
 
+The exact weights correspond to 
 	
 
 
