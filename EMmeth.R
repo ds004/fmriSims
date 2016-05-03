@@ -1,3 +1,12 @@
+library(igraph)
+library(IsingFit)
+library(IsingSampler)
+
+load("trueNet")
+load("msim")
+load("Fit")
+
+
 #EM algorithm on areas of the graph
 
 
