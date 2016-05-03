@@ -77,17 +77,33 @@ CLASS = fMN[which(!(fMN %in% MISS))]
 partFn = rep(1, 200)
 #calculate w_ZM from equation (5)
 size = (2^(length(MISS))-1)
-w_ZM = matrix(rep(1, size*200), nrow = 200, ncol = (2^(length(MISS))-1))
+w_ZM = matrix(rep(1, size*200), nrow = 200, ncol = 2^(length(MISS)))
+W_i = Z_i = array(0, dim = c(length(fMN), 2^(lenth(MISS)), 200))
+X_i = array(0, dim = c(length(fMN), 2^(length(MISS)), 200, length(fMN)-1))
 
 for (n in 1:200) {
 #calculate the partition function for the conditional
 #start partFn and z at 1 since when all obs are 0, A(z_c, z_m) = 1
 	obs = msim[n,]
-	for (z in 1:(2^(length(MISS))-1)) {
-		zm = as.numeric(intToBits(z))[1:3]
-		Azczm = assocFunc(zm, MISS, CLASS, edgePar, nodePar, obs)
-		partFn[n] = partFn[n] + Azczm
-		w_ZM[n, (z+1)] = Azczm
+	for (z in 0:(2^(length(MISS))-1)) {
+	  zm = as.numeric(intToBits(z))[1:3]
+	  newObs = obs
+	  newObs[MISS] = zm
+	  if (z != 0) {
+		  Azczm = assocFunc(zm, MISS, CLASS, edgePar, nodePar, newObs)
+		  partFn[n] = partFn[n] + Azczm
+		  w_ZM[n, (z+1)] = Azczm
+	  }
+		for (m in 1:length(fMN)) {
+		  newZ = z+1
+		  resp = fMN[m]
+		  Odds = exp(nodePar[resp] + edgePar[resp,]%*%newObs)
+		  fitprob = Odds/(1+Odds)
+		  W_i[m, newZ, n] = P_xi[m,newZ]*(1-P_xi[m,newZ])*w_ZM[n, newZ]
+		  Z_i[m,newZ, n] = edgePar[resp,]%*%newObs + (newObs[m]-P_xi[m,newZ])/
+		    ((P_xi[m,newZ]*(1-P_xi[m,newZ])))
+		  X_i[m, newZ, n,] = newObs[-m]
+		}
 	}
 	w_ZM[n,] = w_ZM[n,]/partFn[n]
 }
@@ -117,6 +133,27 @@ assocFunc <- function(z_m, MISS, CLASS, edge, node, obs) {
 
 #need to get weights for the weighted LASSO, and need observations and design matrix
 #for each of z_i and w_i, we need the estimate probability for that 
+
+
+#so we have Z_i, W_i, and X_i
+#since we only want to fit on certain nodes, we'll make sure to only fit nodes
+#on neighbors U fMN
+
+#THE FINAL FIT
+#done at each node
+#look at node 16, trying to get node 3.
+nodeFit = 16
+nodeLasso = glmnet(x = X_i[nodeFit, ], y = c(Z_i[nodeFit,,]), 
+                   family = "gaussian", weights = c(W_i[nodeFit,,]), 
+                   lambda = lam)
+
+
+
+
+
+
+
+
 
 
 
