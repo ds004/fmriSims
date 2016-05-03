@@ -183,7 +183,9 @@ EMweiadj[!EMadj] = 0
 
 
 #alright, now that that area of the graph has been updated
-#now
+#note that we're losing neighbors
+#change the tuning parameter to 0.03666 (avg tuning parameter in fit over
+#smaller network)
 
 
 
