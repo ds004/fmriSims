@@ -60,6 +60,9 @@ fMN = unique(unlist(neighborhood(graphFit, order = 2, nodes = c(16, 30, 44))))
 colnames(fitAdj) = 1:50
 rownames(fitAdj) = 1:50
 
+
+
+#Lines 66-75 don't need to be run
 edges = get.edgelist(graphFit)
 newEdge = matrix(NA, ncol = 2)[-1,]
 for (i in 1:dim(edges)[1]) {
@@ -87,8 +90,8 @@ partFn = rep(1, 200)
 #calculate w_ZM from equation (5)
 size = (2^(length(MISS))-1)
 w_ZM = matrix(rep(1, size*200), nrow = 200, ncol = 2^(length(MISS)))
-W_i = Z_i = array(0, dim = c(length(fMN), 2^(lenth(MISS)), 200))
-X_i = array(0, dim = c(length(fMN), 2^(length(MISS)), 200, length(fMN)-1))
+W_i = Z_i = array(0, dim = c(length(fMN), 2^(length(MISS)), 200))
+X_i = array(0, dim = c(50, 2^(length(MISS)), 200))
 
 for (n in 1:200) {
 #calculate the partition function for the conditional
@@ -108,11 +111,11 @@ for (n in 1:200) {
 		  resp = fMN[m]
 		  Odds = exp(nodePar[resp] + edgePar[resp,]%*%newObs)
 		  fitprob = Odds/(1+Odds)
-		  W_i[m, newZ, n] = P_xi[m,newZ]*(1-P_xi[m,newZ])*w_ZM[n, newZ]
-		  Z_i[m,newZ, n] = edgePar[resp,]%*%newObs + (newObs[m]-P_xi[m,newZ])/
-		    ((P_xi[m,newZ]*(1-P_xi[m,newZ])))
-		  X_i[m, newZ, n,] = newObs[-m]
+		  W_i[m, newZ, n] = fitprob*(1-fitprob)*w_ZM[n, newZ]
+		  Z_i[m,newZ, n] = edgePar[resp,]%*%newObs + (newObs[m]-fitprob)/
+		    (fitprob*(1-fitprob))
 		}
+	X_i[,newZ, n] = newObs
 	}
 	w_ZM[n,] = w_ZM[n,]/partFn[n]
 }
@@ -150,11 +153,39 @@ assocFunc <- function(z_m, MISS, CLASS, edge, node, obs) {
 
 #THE FINAL FIT
 #done at each node
-#look at node 16, trying to get node 3.
-nodeFit = 16
-nodeLasso = glmnet(x = X_i[nodeFit, ], y = c(Z_i[nodeFit,,]), 
-                   family = "gaussian", weights = c(W_i[nodeFit,,]), 
-                   lambda = lam)
+EMweiadj = EMadj = matrix(rep(0, length(fMN)^2), nrow = length(fMN))
+EMnod = rep(0, length(fMN))
+for (nf in 1:length(fMN)) {
+nodeFit = fMN[nf]
+MNnodeFit = nf
+vars = unique(c(fMN, unlist(neighborhood(graphFit, order = 1, nodes = 
+                                           nodeFit))))
+vars = vars[vars!= nodeFit]
+nodeFitnodeLasso = glmnet(x = matrix(X_i[vars,,], nrow = 1600, byrow = TRUE), 
+                          y = c(Z_i[MNnodeFit,,]), family = "gaussian", 
+                          weights = c(W_i[MNnodeFit,,]), lambda = lam)
+
+EMnod[nf] = nodeFitnodeLasso$a0
+EMedges = nodeFitnodeLasso$beta@i+1
+origVars = vars[EMedges]
+LassVars = EMedges[which(origVars %in% fMN)]
+fMNVar = which(fMN %in% origVars)
+EMweiadj[nf,fMNVar] = nodeFitnodeLasso$beta@x[LassVars]
+EMadj[nf,fMNVar] = 1
+}
+
+#get AND adjacaency matrix
+EMadj = EMadj * t(EMadj)
+EMweiadj = (EMweiadj + t(EMweiadj))/2
+EMweiadj[!EMadj] = 0
+
+
+
+
+#alright, now that that area of the graph has been updated
+#now
+
+
 
 
 
