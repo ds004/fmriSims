@@ -30,6 +30,7 @@ m16 = sample(1:200,20); m30 = sample(1:200, 20); m44 = sample(1:200, 20)
 msim[m16,16]= !msim[m16, 16]
 msim[m30, 30] = !msim[m30,30]
 msim[m44, 44] = !msim[m44, 44] 
+#save(msim, file = "msim")
 
 #the neighborhoods we're interested in are
 neighborhood(graph, order = 1, nodes = c(16, 30, 44))
@@ -73,15 +74,22 @@ edgePar = Fit$weiadj
 nodePar = Fit$thresholds
 CLASS = fMN[which(!(fMN %in% MISS))]
 
-for (n = 1:200) {
+partFn = rep(1, 200)
+#calculate w_ZM from equation (5)
+size = (2^(length(MISS))-1)
+w_ZM = matrix(rep(1, size*200), nrow = 200, ncol = (2^(length(MISS))-1))
+
+for (n in 1:200) {
 #calculate the partition function for the conditional
 #start partFn and z at 1 since when all obs are 0, A(z_c, z_m) = 1
-	partFn = 1
 	obs = msim[n,]
-	for (z in 1:(2^3-1)) {
+	for (z in 1:(2^(length(MISS))-1)) {
 		zm = as.numeric(intToBits(z))[1:3]
-		partFn = partFn + assocFunc(zm, MISS, CLASS, edgePar, nodePar, obs)
+		Azczm = assocFunc(zm, MISS, CLASS, edgePar, nodePar, obs)
+		partFn[n] = partFn[n] + Azczm
+		w_ZM[n, (z+1)] = Azczm
 	}
+	w_ZM[n,] = w_ZM[n,]/partFn[n]
 }
 
 
@@ -103,8 +111,12 @@ assocFunc <- function(z_m, MISS, CLASS, edge, node, obs) {
 
 
 
+#okay, so in the above calculation of the partFn 
+#MISS, CLASS, edgePar, nodePar, msim, 
+#edgePar and nodePar change each time.
 
-
+#need to get weights for the weighted LASSO, and need observations and design matrix
+#for each of z_i and w_i, we need the estimate probability for that 
 
 
 
