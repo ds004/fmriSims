@@ -1,6 +1,7 @@
 library(igraph)
 library(IsingFit)
 library(IsingSampler)
+library(glmnet)
 
 load("trueNet")
 load("msim")
@@ -48,6 +49,8 @@ neighborhood(graph, order = 1, nodes = c(16, 30, 44))
 Fit = IsingFit(msim)
 
 #save(Fit, file = "Fit")
+MISS = c(16, 30, 44)
+graph = graph.adjacency(trueNet, mode = "undirected")
 fitAdj = Fit$weiadj != 0
 graphFit = graph.adjacency(fitAdj, mode = "undirected")
 
@@ -158,8 +161,7 @@ EMnod = rep(0, length(fMN))
 for (nf in 1:length(fMN)) {
 nodeFit = fMN[nf]
 MNnodeFit = nf
-vars = unique(c(fMN, unlist(neighborhood(graphFit, order = 1, nodes = 
-                                           nodeFit))))
+vars = unique(c(fMN, unlist(neighborhood(graphFit, order = 1, nodes = nodeFit))))
 vars = vars[vars!= nodeFit]
 nodeFitnodeLasso = glmnet(x = matrix(X_i[vars,,], nrow = 1600, byrow = TRUE), 
                           y = c(Z_i[MNnodeFit,,]), family = "gaussian", 
@@ -190,6 +192,9 @@ EMweiadj[!EMadj] = 0
 
 
 
+
+
+#OKAY, so here's the plan. We'll take the largest lambda such that the lasso on the smaller fMN still gets the same (number of?) neighbors for our misclassified nodes.  We can calculate that lambda individually for each node in fMN.  Cool? Good great, grand. Let's do that. That sounds fantastic.
 
 
 
