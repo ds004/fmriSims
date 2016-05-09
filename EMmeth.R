@@ -96,6 +96,8 @@ w_ZM = matrix(rep(1, size*200), nrow = 200, ncol = 2^(length(MISS)))
 W_i = Z_i = array(0, dim = c(length(fMN), 2^(length(MISS)), 200))
 X_i = array(0, dim = c(50, 2^(length(MISS)), 200))
 
+
+
 for (n in 1:200) {
 #calculate the partition function for the conditional
 #start partFn and z at 1 since when all obs are 0, A(z_c, z_m) = 1
@@ -109,18 +111,18 @@ for (n in 1:200) {
 		  partFn[n] = partFn[n] + Azczm
 		  w_ZM[n, (z+1)] = Azczm
 	  }
+	 w_ZM[n,] = w_ZM[n,]/partFn[n]
 		for (m in 1:length(fMN)) {
 		  newZ = z+1
 		  resp = fMN[m]
 		  Odds = exp(nodePar[resp] + edgePar[resp,]%*%newObs)
 		  fitprob = Odds/(1+Odds)
 		  W_i[m, newZ, n] = fitprob*(1-fitprob)*w_ZM[n, newZ]
-		  Z_i[m,newZ, n] = edgePar[resp,]%*%newObs + (newObs[m]-fitprob)/
+		  Z_i[m,newZ, n] = nodePar[resp] + edgePar[resp,]%*%newObs + (newObs[m]-fitprob)/
 		    (fitprob*(1-fitprob))
 		}
 	X_i[,newZ, n] = newObs
 	}
-	w_ZM[n,] = w_ZM[n,]/partFn[n]
 }
 
 
@@ -155,6 +157,13 @@ assocFunc <- function(z_m, MISS, CLASS, edge, node, obs) {
 #on neighbors U fMN
 
 #THE FINAL FIT
+#get lambdas, this doesn't seem to work
+lams = IsingFitmini(msim, fMN = fMN)
+#old fits were
+oldLam = Fit$lambda.values
+#new fits are this, where the reason I chose this normalizing constant
+#is kind of from https://www.aaai.org/ocs/index.php/AAAI/AAAI15/paper/viewFile/9359/9934
+newLam = Fit$lambda.values*(length(fMN)/dim(msim)[2])
 #done at each node
 EMweiadj = EMadj = matrix(rep(0, length(fMN)^2), nrow = length(fMN))
 EMnod = rep(0, length(fMN))
@@ -165,7 +174,7 @@ vars = unique(c(fMN, unlist(neighborhood(graphFit, order = 1, nodes = nodeFit)))
 vars = vars[vars!= nodeFit]
 nodeFitnodeLasso = glmnet(x = matrix(X_i[vars,,], nrow = 1600, byrow = TRUE), 
                           y = c(Z_i[MNnodeFit,,]), family = "gaussian", 
-                          weights = c(W_i[MNnodeFit,,]), lambda = lam)
+                          weights = c(W_i[MNnodeFit,,]), lambda = newLam[nf])
 
 EMnod[nf] = nodeFitnodeLasso$a0
 EMedges = nodeFitnodeLasso$beta@i+1
@@ -181,7 +190,10 @@ EMadj = EMadj * t(EMadj)
 EMweiadj = (EMweiadj + t(EMweiadj))/2
 EMweiadj[!EMadj] = 0
 
-
+EMadj[1,]
+fMN[which(EMadj[1,]!= 0)]
+neighborhood(graph, order = 1, nodes = 16)
+neighborhood(graphFit, order = 1, nodes = 16)
 
 
 #alright, now that that area of the graph has been updated
@@ -192,14 +204,125 @@ EMweiadj[!EMadj] = 0
 
 
 
+#Alright, full simulation.
+simOut1 = simOut2 = simOut3 = simOut4 = simOut5 = simOut6 = array(data = NA, dim = c(11, 100, 3))
+nsim = 200
+nnodes = 50
+MISS = c(16, 30, 44)
+thresholds = rep(0, 50)
+miclpe = seq(0, 20, by = 2)/100
+for (mcp in 1:11) {
+	missper = miclpe[mcp]
+	for (s in 1:100) {
+#okay now using that, generate some Ising data. 
+#Use IsingSampler function from simsCode.R
+		sim = IsingSampler(nsim, trueNet, thresholds, responses = c(-1L, 1L)) == TRUE
+		msim = sim
+		m16 = sample(1:nsim,rbinom(1, nsim, missper))
+		m30 = sample(1:nsim,rbinom(1, nsim, missper)) 
+		m44 = sample(1:nsim,rbinom(1, nsim, missper))
+		msim[m16,MISS[1]]= !msim[m16, MISS[1]]
+		msim[m30, MISS[2]] = !msim[m30,MISS[2]]
+		msim[m44, MISS[3]] = !msim[m44, MISS[3]] 
+		Fit = IsingFit(msim, plot = FALSE, progressbar=FALSE)
+		graph = graph.adjacency(trueNet, mode = "undirected")
+		fitAdj = Fit$weiadj != 0
+		graphFit = graph.adjacency(fitAdj, mode = "undirected")
+		tMN = unique(unlist(neighborhood(graph, order = 2, nodes = c(16, 30, 44))))
+		fMN = unique(unlist(neighborhood(graphFit, order = 2, nodes = c(16, 30, 44))))
+edgePar = Fit$weiadj
+nodePar = Fit$thresholds
+CLASS = fMN[which(!(fMN %in% MISS))]
+
+partFn = rep(1, nsim)
+#calculate w_ZM from equation (5)
+size = (2^(length(MISS))-1)
+w_ZM = matrix(rep(1, size*nsim), nrow = nsim, ncol = 2^(length(MISS)))
+W_i = Z_i = array(0, dim = c(length(fMN), 2^(length(MISS)), nsim))
+X_i = array(0, dim = c(nnodes, 2^(length(MISS)), nsim))
 
 
-#OKAY, so here's the plan. We'll take the largest lambda such that the lasso on the smaller fMN still gets the same (number of?) neighbors for our misclassified nodes.  We can calculate that lambda individually for each node in fMN.  Cool? Good great, grand. Let's do that. That sounds fantastic.
 
+for (n in 1:nsim) {
+#calculate the partition function for the conditional
+#start partFn and z at 1 since when all obs are 0, A(z_c, z_m) = 1
+	obs = msim[n,]
+	for (z in 0:(2^(length(MISS))-1)) {
+	  zm = as.numeric(intToBits(z))[1:3]
+	  newObs = obs
+	  newObs[MISS] = zm
+	  if (z != 0) {
+		  Azczm = assocFunc(zm, MISS, CLASS, edgePar, nodePar, newObs)
+		  partFn[n] = partFn[n] + Azczm
+		  w_ZM[n, (z+1)] = Azczm
+	  }
+	 w_ZM[n,] = w_ZM[n,]/partFn[n]
+		for (m in 1:length(fMN)) {
+		  newZ = z+1
+		  resp = fMN[m]
+		  Odds = exp(nodePar[resp] + edgePar[resp,]%*%newObs)
+		  fitprob = Odds/(1+Odds)
+		  W_i[m, newZ, n] = fitprob*(1-fitprob)*w_ZM[n, newZ]
+		  Z_i[m,newZ, n] = nodePar[resp] + edgePar[resp,]%*%newObs + (newObs[m]-fitprob)/
+		    (fitprob*(1-fitprob))
+		}
+	X_i[,newZ, n] = newObs
+	}	
+}
 
+newLam = Fit$lambda.values*(length(fMN)/dim(msim)[2])
+#done at each node
+EMweiadj = EMadj = matrix(rep(0, length(fMN)^2), nrow = length(fMN))
+EMnod = rep(0, length(fMN))
+for (nf in 1:length(fMN)) {
+nodeFit = fMN[nf]
+MNnodeFit = nf
+vars = unique(c(fMN, unlist(neighborhood(graphFit, order = 1, nodes = nodeFit))))
+vars = vars[vars!= nodeFit]
+nodeFitnodeLasso = glmnet(x = matrix(X_i[vars,,], nrow = 1600, byrow = TRUE), 
+                          y = c(Z_i[MNnodeFit,,]), family = "gaussian", 
+                          weights = c(W_i[MNnodeFit,,]), lambda = newLam[nf])
 
+EMnod[nf] = nodeFitnodeLasso$a0
+EMedges = nodeFitnodeLasso$beta@i+1
+origVars = vars[EMedges]
+LassVars = EMedges[which(origVars %in% fMN)]
+fMNVar = which(fMN %in% origVars)
+EMweiadj[nf,fMNVar] = nodeFitnodeLasso$beta@x[LassVars]
+EMadj[nf,fMNVar] = 1
+}
 
+i1 = which(fMN == MISS[1])
+i2 = which(fMN == MISS[2]) 
+i3 = which(fMN == MISS[3])
+EMfullAdj = matrix(0, nrow = nnodes, ncol = nnodes)
+for (i in 1:nnodes) {
+	fitAdj[i,-fMN] = 0
+	if (i %in% fMN) {
+	EMfullAdj[i,fMN] = EMadj[which(fMN == i),]
+	}
+}
+#simOut1[mcp, s, 1] = EMadj
+#simOut1[mcp, s, 2] = 
+#simOut1[mcp, s, 3] = 
+#simOut2[mcp, s, 1] = 
+#simOut2[mcp, s, 2] = 
+#simOut2[mcp, s, 3] = 
+#simOut3[mcp, s, 1] = 
+#simOut3[mcp, s, 2] = 
+#simOut3[mcp, s, 3] = 
+#simOut4[mcp, s, 1] = 
+#simOut4[mcp, s, 2] = 
+#simOut4[mcp, s, 3] = 
+#total number of incorrect edges
+simOut5[mcp, s, 1] = sum(fitAdj[fMN, fMN] != trueNet[fMN, fMN])
+simOut5[mcp, s, 2] = sum(EMfullAdj[fMN, fMN]!= trueNet[fMN, fMN])
+#total number of correct edges
+simOut6[mcp, s, 1] = sum(fitAdj*trueNet)
+simOut6[mcp, s, 2] = sum(EMfullAdj*trueNet)
 
+	}
+}
 
 
 
