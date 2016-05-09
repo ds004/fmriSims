@@ -171,11 +171,11 @@ misclass = seq(0, 10, by = 1)
 out1 = out2 = matrix(NA, nrow = 50, ncol = 11)
 thresholds = rep(0, 100)
 nsim = 500
+TrueAdj = ScaFre(100)
 #loop over each miclassification thing
 for (i in misclass) {
 #simulate 50 times
 t = proc.time()[3]
-TrueAdj = ErdRen(100)
 	for (k in 1:50) {
 		sim = IsingSampler(nsim, TrueAdj, thresholds, responses = c(-1L, 1L))
 		sim = sim==TRUE
@@ -197,11 +197,11 @@ misclass = seq(0, 10, by = 1)
 out3 = out4 = matrix(NA, nrow = 50, ncol = 11)
 thresholds = rep(0, 100)
 nsim = 500
+TrueAdj = ErdRen(100)
 #loop over each miclassification thing
 for (i in misclass) {
 #simulate 50 times
 t = proc.time()[3]
-TrueAdj = ScaFre(100)
 	for (k in 1:50) {
 		sim = IsingSampler(nsim, TrueAdj, thresholds, responses = c(-1L, 1L))
 		sim = sim==TRUE
