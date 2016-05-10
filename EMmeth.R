@@ -201,7 +201,7 @@ neighborhood(graphFit, order = 1, nodes = 16)
 #change the tuning parameter to 0.03666 (avg tuning parameter in fit over
 #smaller network)
 
-
+`
 
 
 #Alright, full simulation.
@@ -328,3 +328,4 @@ simOut6[mcp, s, 2] = sum(EMfullAdj*trueNet)
 
 
 
+`
