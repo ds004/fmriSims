@@ -106,10 +106,77 @@ In this simulation we generate a scale-free network with 50 nodes.  3 nodes are 
 
 We do the initial fit to get $E^{(0)}$.  Then, given the fitted $M^N$, we look at $E_M = \{(s, t) : s \in M^N \text{ or } t \in M^N\}$.  If an edge is between a node in $M^N$ and a node not in $M^N$ then we need to be sure to include that node in the fitted logistic regression.
 
-	
+The lambda parameter is chosen for each neighborhood logistic regression in the EM as that lambda parameter in the non-EM neighborhood logistic regression over $M^N$. 
+
+There appears to be an issue with the way we are doing our logistic regression, as can be seen in figure 1. 
+
+Potential issues for this are due to the lambda choice.  This can be further investigated by using the new choice of lambda that are being used for each neighborhood based logistic regression, and rerunning the non-EM fit to see if we are doing at least as well with this new lambda chosen on the smaller network. 
+
+Another thing is that we are not directly including our known misclassification probability in our weightings, which should be done.  Right now, a node's "on/off" probability is only being estimated by neighboring nodes, and not the known (in real examples, this would be outputted from the EM) independent misclassification probabilities.  This would put more weight on the observed data which should certainly be done.
+\begin{figure}[h!]
+\centering
+\includegraphics[angle=0,width=4.0in]{EMn0edge.png}
+\caption{Number of correct non-0 edges from the original fit (black) and EM adjusted fit (blue)}
+\end{figure}
 
 
+\section{Simulations of how fitted works with misclassification}
+When the entire network is misclassified, the Ravikumar method still appears to do well. For a fixed scale free graph and a fixed Erdos Renyi graph with 100 nodes each, we generate 500 observations, and fit the the Ising fit for 50 times for each misclassification probability. Nodes were misclassified ranging from 0 to 10\%.  
 
+Figure 2 shows the proportion of zero edges correctly identified for the scale-free graph.  Figure 3 shows the proportion of non-zero edges correctly identified for the scale-free graph.. Figure 4 and 5 do the same respectively for the Erdos Renyi graph.
 
+We see that even when nodes are misclassified 10\% of the time, edges are still correctly chosen.  Interestingly, as soon as any amount of misclassification is included for non-zero edges, the method immediately does worse in the Scale Free case.  
+
+\begin{figure}[h!]
+\centering
+\includegraphics[angle=0,width=4.0in]{prop0Edge.png}
+\caption{Number of correct non-0 edges from the original fit (black) and EM adjusted fit (blue)}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[angle=0,width=4.0in]{propn0edge.png}
+\caption{Number of correct non-0 edges from the original fit (black) and EM adjusted fit (blue)}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[angle=0,width=4.0in]{prop0EdgeErd.png}
+\caption{Number of correct non-0 edges from the original fit (black) and EM adjusted fit (blue)}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[angle=0,width=4.0in]{propn0EdgeErd.png}
+\caption{Number of correct non-0 edges from the original fit (black) and EM adjusted fit (blue)}
+\end{figure}
+\clearpage
+
+\section{Including Node Specification misclassification in weights}
+
+Let $\hat{z}_c$ and $\hat{z}_m$ be the observed nodes.  Then our weights from equations 1-5 now become the following 
+
+\begin{align}
+P(Z_m=z_m | Z_c= \hat{z}_c, \hat{Z}_m = \hat{z}_m) &= \frac{P(\hat{Z}_m = \hat{z}_m, Z_m = z_m, Z_c = \hat{z}_c)}{P(Z_c = \hat{z}_c, \hat{Z}_m = \hat{Z}_m)}\\ 
+&= \frac{P(\hat{Z}_m = \hat{z}_m|Z_m = z_m, Z_c = \hat{z}_c)P(Z_m = z_m, Z_c = \hat{z}_c)}{P(Z_c = \hat{z}_c, \hat{Z}_m = \hat{z}_m)} \\
+&= w(z_m, \hat{z}_m, \hat{z}_c) 
+\end{align}
+
+Where 
+\begin{align*}
+P(\hat{Z}_m = \hat{z}_m|Z_m = z_m, Z_c = \hat{z}_c) &= P(\hat{Z}_m = \hat{z}_m|Z_m = z_m) \\
+&= \prod_{i\in M}\left(\gamma_i\mathbf{1}(\hat{z}_m \neq z_m) + (1-\gamma_i)\mathbf{1}(\hat{z}_m = z_m)\right)\\
+&=c(\hat{z}_m, z_m, \hat{z}_c)
+\end{align*}
+
+and
+\begin{align*}
+P(Z_m = z_m, Z_c = Z_c = \hat{z}_c) &=  B\cdot \exp(A(z_c, z_m))
+\end{align*}
+where B cancels out when calculating the denominator, so we do not need to worry about it's value.
+\begin{align*}
+P(Z_c = \hat{z}_c, \hat{Z}_m = \hat{z}_m) &= \sum_{z_m' \in \mathcal{M}}P(\hat{Z}_m = \hat{z}_m, Z_m = z_m', Z_c = \hat{z}_c) \\
+&= B\sum_{z_m'\in\mathcal{M}}c(\hat{z}_m, z_m', \hat{z}_c)\exp(A(z_c, z_m'))
+\end{align*}
 
 \end{document}
