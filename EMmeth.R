@@ -325,7 +325,10 @@ simOut6[mcp, s, 2] = sum(EMfullAdj*trueNet)
 }
 
 
-
+#Alright, so now let's do the weights.
+mWeights = function(z_m, MISS, CLASS, edge, node, obs) {
+  
+}
 
 
 `
