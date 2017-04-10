@@ -1,6 +1,9 @@
-# IRFC fit in Matlab
+IRFC fit in Matlab
+======================
 David Sinclair  
-April 10, 2017  
+------------------
+April 10, 2017
+-------------------  
 
 ##Description
 Given directory for beta fits in .nii format, and a parcellation of the brain, obtains a weighted adjacency matrix corresponding to the interregional functional connectivity (IRFC) method. 
