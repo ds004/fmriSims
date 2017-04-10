@@ -57,7 +57,7 @@ Manual fit
 
 The above fit function uses a bonferonni correction and an automatically selected model selection parameter.  In order to have more control over the fitting process (and to save the Pvalue network which is time consuming to calculate) the following steps can be followed.
 
-###Step 1. Obtain Pvalue Network. ###
+1. ###Step 1. Obtain Pvalue Network. ###
 
 Running the following function with the same arguments as above will give an uncorrected pvalue network. 
 
