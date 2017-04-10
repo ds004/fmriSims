@@ -47,7 +47,7 @@ All nifti files must have the same dimension.
 Value
 -------------------  
 
--`weiadj`: a weighted adjacency matrix such that the i^th row corresponds to the parcel with the i^th smallest label.
+-`weiadj`: a weighted adjacency matrix such that the i^th where rows correspond to parcel IDs.  If parcIDs is a vector of all parcel IDs (excluding 0), then the i^th row corresponds to the `sort(parcIDs)(i)` parcel (e.g. the i^th smallest parcel ID).  
 
 -`lambda_optval`: the optimal fitted regularization parameter for each region.
 
@@ -72,7 +72,7 @@ If `numparc` is the number of parcels and `numObs` is the number of observations
 This thresholding is done via a bonferonni correction, that can be edited easily if another threshold is of interest.
 
 
-###Step 2. Fitting Net###
+2. **Fitting Network**
 
 Running the following function on Net will output the weighted adjacency matrix
 
@@ -81,6 +81,6 @@ Running the following function on Net will output the weighted adjacency matrix
 Out = IsingFitEx(Net, 0.25, TRUE)
 ```
 
-Here `0.25` corresponds to the`gamma` variable corresponds to the EBIC information criterion and penalizes the number of edges.  The `TRUE` corresponds to an `AND` variable.  Being `TRUE` means an edge is only included between any regions A and B if B was selected as a neighbor of A **and** A was selected as a neighor of B.  If `AND` is `FALSE` then the bolded **and** is switched to **or**.
+Here `0.25` corresponds to the`gamma` variable corresponds to the EBIC information criterion and penalizes the number of edges.  The `TRUE` corresponds to an `AND` variable.  Being `TRUE` means an edge is only included between any regions A and B if B was selected as a neighbor of A **AND** A was selected as a neighor of B.  If `AND` is `FALSE` then the bolded **AND** is switched to **OR**.
 
 
