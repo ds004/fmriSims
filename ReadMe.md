@@ -49,7 +49,7 @@ All nifti files must have the same dimension.
 Value
 -------------------  
 
--`weiadj`: a weighted adjacency matrix such that the $i^{th}$ where rows correspond to parcel IDs.  If parcIDs is a vector of all parcel IDs (excluding 0), then the $i^{th}$ row corresponds to the `sort(parcIDs)(i)` parcel (e.g. the $i^{th}$ smallest parcel ID).  
+-`weiadj`: a weighted adjacency matrix such that the i^th where rows correspond to parcel IDs.  If parcIDs is a vector of all parcel IDs (excluding 0), then the i^th row corresponds to the `sort(parcIDs)(i)` parcel (e.g. the i^th smallest parcel ID).  
 
 -`lambda_optval`: the optimal fitted regularization parameter for each parcel.
 
@@ -113,7 +113,7 @@ Note that the working directory must be changed to correspond to the location of
 No Baseline beta map?
 -------------------  
 
-If you have no baseline betamap for your events, you can create an empty nifti file as follows to your subdirectories.  When your event file has dimension `n1 X n2 X n3`, you can create a baseline nifti file with the following code. 
+If you have no baseline betamap for your events (e.g. the event betamaps correspond already correspond to an esimated contrast), you can create an empty nifti file as follows to your subdirectories.  When your event file has dimension `n1 X n2 X n3`, you can create a baseline nifti file with the following code. 
 
 
 ```r
