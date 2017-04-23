@@ -21,7 +21,7 @@ The function is then run as follows:
 
 
 ```r
-IRFCnet(workdir, parcels, subjectID, eventName, baseName, GLMregions, gamma, bonf)
+IRFCnet(workdir, parcels, subjectID, condName, baseName, GLMregions, gamma, bonf)
 ```
 
 Arguments
@@ -35,9 +35,9 @@ All nifti files must have the same dimension.
 
 -`subjectID`: a `1xM` cell object containing a string ID for each subject.  Assume each subject has a folder within `workdir` with their corresponding subjectID that contains all their data.  E.g. if subjectID(1) == '001', then the folder `workdir/001` will contain all of that subject's data
 
--`eventName`: a `1xK` cell object containing a string giving placement of each event's fitted beta map in .nii format within any subjectID folder.  For example if a subjectID is 001, and `eventName = {"event1/beta.nii", "event2/beta.nii"}` then there is a beta map located in workdir/001/event1/beta.nii and workdir/001/event2/beta/nii.
+-`condName`: a `1xK` cell object containing a string giving placement of each condition's fitted beta map in .nii format within any subjectID folder.  For example if a subjectID is 001, and `condName = {"con1/beta.nii", "con2/beta.nii"}` then there is a beta map located in workdir/001/con1/beta.nii and workdir/001/con2/beta/nii.
 
--`baseName`: a `1xK` cell object similar to `eventName`.  Gives the placement of any baseline betamaps for comparing events to. **Even if the baseline is the same for multiple events, there file still must be duplicated, as there must be an `nii` file for each event.**
+-`baseName`: a `1xK` cell object similar to `condName`.  Gives the placement of any baseline betamaps for comparing conditions to. **Even if the baseline is the same for multiple conditions, there file still must be duplicated, as there must be an `nii` file for each condition.**
 
 -`GLMregions`: a numeric vector giving the parcel number for all parcels that were selected as significantly activating (across time) from the traditional GLM.
 
@@ -53,7 +53,7 @@ Value
 
 -`lambda_optval`: the optimal fitted regularization parameter for each parcel.
 
--`PvalNet`: a matrix that gives pvalues for each observation and region.  This is a (number of parcels)x(number of events * number of subjects) matrix.
+-`PvalNet`: a matrix that gives pvalues for each observation and region.  This is a (number of parcels)x(number of conditions * number of subjects) matrix.
 
 -`ObNet`: the observed state of each region. Obtained by thresholding the PvalNet. Has the same structure as `PvalNet`
 
@@ -65,7 +65,7 @@ Running the following function with the same arguments as above will give an unc
 
 ```r
 cd(workdir)
-PvalNet = Pnet(parcels, subjectID, eventName, baseName) 
+PvalNet = Pnet(parcels, subjectID, condName, baseName) 
 ObNet = PvalNet < 0.05/bonf
 ```
 
@@ -101,7 +101,7 @@ In this example, variables for the function can be defined as follows:
 workdir = './IRFCexample';
 parcels = 'parc.nii';
 subjectID = {'sub1' 'sub2' 'sub3'};
-eventName = {'eve1.nii' 'eve2.nii'};
+condiName = {'con1.nii' 'con2.nii'};
 baseName = {'bas1.nii' 'bas2.nii'};
 GLMregions = [1 2 3 4]
 ```
@@ -113,7 +113,7 @@ Note that the working directory must be changed to correspond to the location of
 No Baseline beta map?
 -------------------  
 
-If you have no baseline betamap for your events (e.g. the event betamaps correspond already correspond to an esimated contrast), you can create an empty nifti file as follows to your subdirectories.  When your event file has dimension `n1 X n2 X n3`, you can create a baseline nifti file with the following code. 
+If you have no baseline betamap for your conditions (e.g. the condition betamaps already correspond to an estimated contrast), you can create an empty nifti file as follows, which can be copied to your subdirectories.  When your condition file has dimension `n1 X n2 X n3`, you can create a baseline nifti file with the following code. 
 
 
 ```r
